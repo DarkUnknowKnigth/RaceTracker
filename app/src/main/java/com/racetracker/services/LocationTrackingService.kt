@@ -50,8 +50,9 @@ class LocationTrackingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "START_TRACKING") {
             val userId = intent.getIntExtra("USER_ID", -1)
+            val vehicleId = intent.getIntExtra("VEHICLE_ID", -1)
             if (userId != -1) {
-                startTracking(userId)
+                startTracking(userId, if (vehicleId != -1) vehicleId else null)
             }
         } else if (intent?.action == "STOP_TRACKING") {
             stopTracking()
@@ -69,7 +70,7 @@ class LocationTrackingService : Service() {
         return START_STICKY
     }
 
-    private fun startTracking(userId: Int) {
+    private fun startTracking(userId: Int, vehicleId: Int?) {
         // Create notification channel for Foreground Service
         val channelId = "race_tracker_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -94,7 +95,7 @@ class LocationTrackingService : Service() {
 
         serviceScope.launch {
             val db = AppDatabase.getDatabase(applicationContext)
-            val session = SessionEntity(userId = userId, startTime = System.currentTimeMillis())
+            val session = SessionEntity(userId = userId, vehicleId = vehicleId, startTime = System.currentTimeMillis())
             sessionId = db.raceDao().insertSession(session).toInt()
             
             val prefs = getSharedPreferences("race_tracker_prefs", Context.MODE_PRIVATE)

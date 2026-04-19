@@ -114,8 +114,9 @@ fun RegisterScreen(db: AppDatabase, onRegisterSuccess: (Int) -> Unit, onNavigate
         Button(
             onClick = {
                 coroutineScope.launch {
-                    val userId = db.raceDao().insertUser(UserEntity(username = username, passwordHash = password, vehicleModel = vehicleModel))
-                    onRegisterSuccess(userId.toInt())
+                    val userId = db.raceDao().insertUser(UserEntity(username = username, passwordHash = password, vehicleModel = vehicleModel)).toInt()
+                    db.raceDao().insertVehicle(VehicleEntity(userId = userId, model = vehicleModel))
+                    onRegisterSuccess(userId)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(50.dp)

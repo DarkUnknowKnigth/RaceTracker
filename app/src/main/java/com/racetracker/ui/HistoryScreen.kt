@@ -38,7 +38,8 @@ fun HistoryScreen(userId: Int, db: AppDatabase, onSessionSelected: (Int) -> Unit
             LazyColumn {
                 items(sessions) { session ->
                     SessionCard(
-                        session = session, 
+                        session = session,
+                        db = db,
                         onClick = { onSessionSelected(session.id) },
                         onDelete = {
                             coroutineScope.launch {
@@ -54,9 +55,19 @@ fun HistoryScreen(userId: Int, db: AppDatabase, onSessionSelected: (Int) -> Unit
 }
 
 @Composable
-fun SessionCard(session: SessionEntity, onClick: () -> Unit, onDelete: () -> Unit) {
+fun SessionCard(session: SessionEntity, db: AppDatabase, onClick: () -> Unit, onDelete: () -> Unit) {
     val sdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
     val dateStr = sdf.format(Date(session.startTime))
+    var vehicleModel by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(session.vehicleId) {
+        session.vehicleId?.let { vId ->
+            db.raceDao().getVehicleById(vId).collect {
+                vehicleModel = it?.model
+            }
+        }
+    }
+
     val durationText = if (session.endTime != null) {
         val duration = (session.endTime - session.startTime) / 60000
         "$duration min"
@@ -79,6 +90,9 @@ fun SessionCard(session: SessionEntity, onClick: () -> Unit, onDelete: () -> Uni
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(dateStr, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                if (vehicleModel != null) {
+                    Text(vehicleModel!!, color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("TOP: ", color = MaterialTheme.colorScheme.outline, fontSize = 12.sp, fontWeight = FontWeight.Bold)

@@ -36,13 +36,14 @@ fun StatsScreen(userId: Int, db: AppDatabase, sessionId: Int? = null, onNavigate
     var overallTopSpeed by remember { mutableStateOf(0f) }
     var trackPoints by remember { mutableStateOf<List<TrackPointEntity>?>(null) }
     var user by remember { mutableStateOf<com.racetracker.data.UserEntity?>(null) }
+    var vehicle by remember { mutableStateOf<com.racetracker.data.VehicleEntity?>(null) }
 
     LaunchedEffect(userId, sessionId) {
         if (sessionId != null) {
             db.raceDao().getSessionById(sessionId).collect { session ->
                 lastSession = session
-                session?.let {
-                    db.raceDao().getTrackPointsForSession(it.id).collect { points ->
+                session?.let { s ->
+                    db.raceDao().getTrackPointsForSession(s.id).collect { points ->
                         trackPoints = points
                     }
                 }
@@ -50,14 +51,26 @@ fun StatsScreen(userId: Int, db: AppDatabase, sessionId: Int? = null, onNavigate
         } else {
             db.raceDao().getLastSessionForUser(userId).collect { last ->
                 lastSession = last
-                last?.let {
-                    db.raceDao().getTrackPointsForSession(it.id).collect { points ->
+                last?.let { s ->
+                    db.raceDao().getTrackPointsForSession(s.id).collect { points ->
                         trackPoints = points
                     }
                 }
             }
         }
     }
+
+    LaunchedEffect(lastSession?.vehicleId) {
+        val vId = lastSession?.vehicleId
+        if (vId != null) {
+            db.raceDao().getVehicleById(vId).collect {
+                vehicle = it
+            }
+        } else {
+            vehicle = null
+        }
+    }
+
     LaunchedEffect(userId) {
         launch {
             db.raceDao().getUserById(userId).collect {
@@ -74,16 +87,14 @@ fun StatsScreen(userId: Int, db: AppDatabase, sessionId: Int? = null, onNavigate
     Column(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
-
-
         Column(modifier = Modifier.padding(16.dp)) {
             if (user != null) {
                 Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(64.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
-                        if (user!!.photoUri != null) {
+                        if (vehicle?.photoUri != null) {
                             coil.compose.AsyncImage(
-                                model = user!!.photoUri,
-                                contentDescription = "Foto",
+                                model = vehicle!!.photoUri,
+                                contentDescription = "Foto Vehículo",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
                             )
@@ -94,7 +105,7 @@ fun StatsScreen(userId: Int, db: AppDatabase, sessionId: Int? = null, onNavigate
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(user!!.username, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                        Text(user!!.vehicleModel, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(vehicle?.model ?: "Vehículo no registrado", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }

@@ -52,9 +52,15 @@ fun DashboardScreen(userId: Int, db: com.racetracker.data.AppDatabase, onLogout:
     ) { permissions ->
         val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
         if (fineGranted) {
+            val prefs = context.getSharedPreferences("race_tracker_prefs", Context.MODE_PRIVATE)
+            val activeVehicleId = prefs.getInt("ACTIVE_VEHICLE_ID_${userId}", -1)
+            
             val intent = Intent(context, LocationTrackingService::class.java).apply { 
                 action = "START_TRACKING" 
                 putExtra("USER_ID", userId)
+                if (activeVehicleId != -1) {
+                    putExtra("VEHICLE_ID", activeVehicleId)
+                }
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
