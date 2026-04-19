@@ -55,8 +55,18 @@ class LocationTrackingService : Service() {
             }
         } else if (intent?.action == "STOP_TRACKING") {
             stopTracking()
+        } else if (intent == null) {
+            val prefs = getSharedPreferences("race_tracker_prefs", Context.MODE_PRIVATE)
+            val savedUserId = prefs.getInt("ACTIVE_USER_ID", -1)
+            val savedSessionId = prefs.getInt("ACTIVE_SESSION_ID", -1)
+            if (savedUserId != -1 && savedSessionId != -1) {
+                sessionId = savedSessionId
+                resumeTracking()
+            } else {
+                stopSelf()
+            }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     private fun startTracking(userId: Int) {
@@ -87,8 +97,36 @@ class LocationTrackingService : Service() {
             val session = SessionEntity(userId = userId, startTime = System.currentTimeMillis())
             sessionId = db.raceDao().insertSession(session).toInt()
             
+            val prefs = getSharedPreferences("race_tracker_prefs", Context.MODE_PRIVATE)
+            prefs.edit().putInt("ACTIVE_USER_ID", userId).putInt("ACTIVE_SESSION_ID", sessionId).apply()
+            
             requestLocationUpdates()
         }
+    }
+
+    private fun resumeTracking() {
+        val channelId = "race_tracker_channel"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId, "Race Tracker", NotificationManager.IMPORTANCE_DEFAULT
+            )
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Race Tracker Active")
+            .setContentText("Recording your speed and route...")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+        } else {
+            startForeground(1, notification)
+        }
+
+        requestLocationUpdates()
     }
 
     private fun requestLocationUpdates() {
@@ -149,6 +187,7 @@ class LocationTrackingService : Service() {
             AppDatabase.getDatabase(applicationContext).raceDao().insertTrackPoint(point)
             
             val intent = Intent("SPEED_UPDATE")
+            intent.setPackage(packageName)
             intent.putExtra("CURRENT_SPEED", currentSpeedKmh)
             sendBroadcast(intent)
         }
@@ -156,6 +195,9 @@ class LocationTrackingService : Service() {
 
     private fun stopTracking() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
+        
+        val prefs = getSharedPreferences("race_tracker_prefs", Context.MODE_PRIVATE)
+        prefs.edit().remove("ACTIVE_USER_ID").remove("ACTIVE_SESSION_ID").apply()
         
         serviceScope.launch {
             if (sessionId != -1) {

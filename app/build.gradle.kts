@@ -62,6 +62,9 @@ dependencies {
     // Navigation Compose
     implementation("androidx.navigation:navigation-compose:2.7.5")
 
+    // Coil for Image Loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
     // Room Database
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")

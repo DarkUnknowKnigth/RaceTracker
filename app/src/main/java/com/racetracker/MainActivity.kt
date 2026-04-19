@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -51,7 +53,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun RaceTrackerApp(db: AppDatabase) {
     val navController = rememberNavController()
-    var currentUserId by remember { mutableStateOf<Int?>(null) }
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("race_tracker_prefs", Context.MODE_PRIVATE)
+    var currentUserId by remember { mutableStateOf<Int?>(prefs.getInt("LOGGED_IN_USER_ID", -1).takeIf { it != -1 }) }
+    var globalSelectedSessionId by remember { mutableStateOf<Int?>(null) }
     
     // Bottom Bar state
     var currentRoute by remember { mutableStateOf("dashboard") }
@@ -99,13 +104,14 @@ fun RaceTrackerApp(db: AppDatabase) {
     ) { innerPadding ->
         NavHost(
             navController = navController, 
-            startDestination = "login", 
+            startDestination = if (currentUserId != null) "dashboard" else "login", 
             modifier = Modifier.padding(innerPadding)
         ) {
             composable("login") {
                 LoginScreen(
                     db = db,
                     onLoginSuccess = { userId ->
+                        prefs.edit().putInt("LOGGED_IN_USER_ID", userId).apply()
                         currentUserId = userId; currentRoute = "dashboard"
                         navController.navigate("dashboard") { popUpTo("login") { inclusive = true } }
                     },
@@ -116,6 +122,7 @@ fun RaceTrackerApp(db: AppDatabase) {
                 RegisterScreen(
                     db = db,
                     onRegisterSuccess = { userId ->
+                        prefs.edit().putInt("LOGGED_IN_USER_ID", userId).apply()
                         currentUserId = userId; currentRoute = "dashboard"
                         navController.navigate("dashboard") { popUpTo("login") { inclusive = true } }
                     },
@@ -124,8 +131,8 @@ fun RaceTrackerApp(db: AppDatabase) {
             }
             composable("dashboard") {
                 currentUserId?.let { userId ->
-                    DashboardScreen(userId = userId, onLogout = {
-                        // After stopping track, go to Stats
+                    DashboardScreen(userId = userId, db = db, onLogout = {
+                        globalSelectedSessionId = null // Reset on new track
                         currentRoute = "stats"
                         navController.navigate("stats") { popUpTo("dashboard") }
                     })
@@ -134,7 +141,9 @@ fun RaceTrackerApp(db: AppDatabase) {
             composable("perfil") {
                 currentUserId?.let { userId ->
                     PerfilScreen(userId = userId, db = db, onLogout = {
+                        prefs.edit().remove("LOGGED_IN_USER_ID").apply()
                         currentUserId = null
+                        globalSelectedSessionId = null
                         navController.navigate("login") { popUpTo(0) }
                     })
                 }
@@ -147,8 +156,17 @@ fun RaceTrackerApp(db: AppDatabase) {
                             lastSessionId = session?.id
                         }
                     }
-                    if (lastSessionId != null) {
-                        MapScreen(sessionId = lastSessionId!!, db = db, onBack = { navController.popBackStack() })
+                    val sessionToShow = globalSelectedSessionId ?: lastSessionId
+                    if (sessionToShow != null) {
+                        MapScreen(
+                            sessionId = sessionToShow, 
+                            db = db, 
+                            onBack = { navController.popBackStack() },
+                            onNavigateToStats = { 
+                                currentRoute = "stats"
+                                navController.navigate("stats") { launchSingleTop = true; popUpTo("dashboard") } 
+                            }
+                        )
                     } else {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                             Text("Aún no tienes rutas guardadas.", color = Color.White)
@@ -158,20 +176,24 @@ fun RaceTrackerApp(db: AppDatabase) {
             }
             composable("stats") {
                 currentUserId?.let { userId ->
-                    StatsScreen(userId = userId, db = db)
+                    StatsScreen(
+                        userId = userId, 
+                        db = db, 
+                        sessionId = globalSelectedSessionId, 
+                        onNavigateToMap = { 
+                            currentRoute = "last_map"
+                            navController.navigate("last_map") { launchSingleTop = true; popUpTo("dashboard") }
+                        }
+                    )
                 }
             }
             composable("history") {
                 currentUserId?.let { userId ->
                     HistoryScreen(userId = userId, db = db, onSessionSelected = { sessionId ->
-                        navController.navigate("map/$sessionId")
+                        globalSelectedSessionId = sessionId
+                        currentRoute = "stats"
+                        navController.navigate("stats") { launchSingleTop = true; popUpTo("dashboard") }
                     })
-                }
-            }
-            composable("map/{sessionId}") { backStackEntry ->
-                val sessionId = backStackEntry.arguments?.getString("sessionId")?.toIntOrNull()
-                if (sessionId != null) {
-                    MapScreen(sessionId = sessionId, db = db, onBack = { navController.popBackStack() })
                 }
             }
         }

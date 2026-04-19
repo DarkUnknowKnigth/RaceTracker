@@ -7,7 +7,27 @@ data class UserEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val username: String,
     val passwordHash: String,
-    val vehicleModel: String
+    val vehicleModel: String,
+    val photoUri: String? = null
+)
+
+@Entity(
+    tableName = "vehicles",
+    indices = [Index("userId")],
+    foreignKeys = [
+        ForeignKey(
+            entity = UserEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["userId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
+data class VehicleEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val userId: Int,
+    val model: String,
+    val photoUri: String? = null
 )
 
 @Entity(tableName = "sessions", foreignKeys = [
@@ -26,7 +46,8 @@ data class SessionEntity(
     val maxSpeed: Float = 0f,
     val maxBrakingGForce: Float = 0f,
     val distanceMeters: Float = 0f,
-    val isSynced: Boolean = false
+    val isSynced: Boolean = false,
+    val vehicleId: Int? = null
 )
 
 @Entity(tableName = "track_points", foreignKeys = [

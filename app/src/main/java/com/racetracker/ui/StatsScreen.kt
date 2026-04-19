@@ -5,6 +5,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -25,43 +28,77 @@ import com.racetracker.R
 import com.racetracker.data.AppDatabase
 import com.racetracker.data.SessionEntity
 import com.racetracker.data.TrackPointEntity
+import kotlinx.coroutines.launch
 
 @Composable
-fun StatsScreen(userId: Int, db: AppDatabase) {
+fun StatsScreen(userId: Int, db: AppDatabase, sessionId: Int? = null, onNavigateToMap: ((Int) -> Unit)? = null) {
     var lastSession by remember { mutableStateOf<SessionEntity?>(null) }
     var overallTopSpeed by remember { mutableStateOf(0f) }
     var trackPoints by remember { mutableStateOf<List<TrackPointEntity>?>(null) }
+    var user by remember { mutableStateOf<com.racetracker.data.UserEntity?>(null) }
 
-    LaunchedEffect(userId) {
-        db.raceDao().getLastSessionForUser(userId).collect { last ->
-            lastSession = last
-            last?.let {
-                db.raceDao().getTrackPointsForSession(it.id).collect { points ->
-                    trackPoints = points
+    LaunchedEffect(userId, sessionId) {
+        if (sessionId != null) {
+            db.raceDao().getSessionById(sessionId).collect { session ->
+                lastSession = session
+                session?.let {
+                    db.raceDao().getTrackPointsForSession(it.id).collect { points ->
+                        trackPoints = points
+                    }
+                }
+            }
+        } else {
+            db.raceDao().getLastSessionForUser(userId).collect { last ->
+                lastSession = last
+                last?.let {
+                    db.raceDao().getTrackPointsForSession(it.id).collect { points ->
+                        trackPoints = points
+                    }
                 }
             }
         }
     }
     LaunchedEffect(userId) {
-        db.raceDao().getOverallTopSpeedForUser(userId).collect { speed ->
-            overallTopSpeed = speed ?: 0f
+        launch {
+            db.raceDao().getUserById(userId).collect {
+                user = it
+            }
+        }
+        launch {
+            db.raceDao().getOverallTopSpeedForUser(userId).collect { speed ->
+                overallTopSpeed = speed ?: 0f
+            }
         }
     }
 
     Column(
         modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.m3_banner),
-            contentDescription = "Racing Banner",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-        )
+
 
         Column(modifier = Modifier.padding(16.dp)) {
+            if (user != null) {
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(64.dp).clip(androidx.compose.foundation.shape.CircleShape).background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
+                        if (user!!.photoUri != null) {
+                            coil.compose.AsyncImage(
+                                model = user!!.photoUri,
+                                contentDescription = "Foto",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(Icons.Filled.Person, contentDescription = "Piloto", modifier = Modifier.size(32.dp), tint = Color.Gray)
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(user!!.username, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                        Text(user!!.vehicleModel, color = MaterialTheme.colorScheme.primary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("🏁 RECORD MAGISTRAL", color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Black)
                 val context = LocalContext.current
@@ -79,32 +116,73 @@ fun StatsScreen(userId: Int, db: AppDatabase) {
                 }
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth().height(100.dp).padding(top = 8.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Card(
+                    modifier = Modifier.weight(1f).height(100.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    Text("TOP SPEED ABSOLUTO", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Text("${String.format("%.1f", overallTopSpeed)} KM/H", color = MaterialTheme.colorScheme.primary, fontSize = 42.sp, fontWeight = FontWeight.Black)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("TOP ABSOLUTO", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Text("${String.format("%.1f", overallTopSpeed)}", color = MaterialTheme.colorScheme.primary, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                        Text("KM/H", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                if (lastSession != null) {
+                    Card(
+                        modifier = Modifier.weight(1f).height(100.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("TOP VIAJE", color = Color.Gray, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("${String.format("%.1f", lastSession!!.maxSpeed)}", color = MaterialTheme.colorScheme.primary, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                            Text("KM/H", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-            Text("ÚLTIMO VIAJE (Fuerzas G)", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(if (sessionId != null) "VIAJE SELECCIONADO (Fuerzas G)" else "ÚLTIMO VIAJE (Fuerzas G)", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (lastSession != null && onNavigateToMap != null) {
+                    IconButton(onClick = { onNavigateToMap(lastSession!!.id) }) {
+                        Icon(androidx.compose.material.icons.Icons.Filled.Map, contentDescription = "Ver Mapa", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
 
             if (lastSession != null) {
+                val avgSpeed = if (trackPoints != null && trackPoints!!.isNotEmpty()) trackPoints!!.map { it.speedKmh }.average() else 0.0
+                val maxPosG = trackPoints?.maxOfOrNull { it.acceleration }?.let { it / 9.81f }?.coerceAtLeast(0f) ?: 0f
+                val maxNegG = trackPoints?.minOfOrNull { it.acceleration }?.let { Math.abs(it / 9.81f) } ?: 0f
+                val timeOver100 = trackPoints?.count { it.speedKmh >= 100f } ?: 0
+
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    StatBox("TOP VIAJE", "${String.format("%.1f", lastSession!!.maxSpeed)} km/h")
+                    StatBox("VEL. PROM", "${String.format("%.1f", avgSpeed)} km/h")
                     val distanceKm = lastSession!!.distanceMeters / 1000f
                     StatBox("DISTANCIA", "${String.format("%.2f", distanceKm)} km")
                     val duration = if (lastSession!!.endTime != null) ((lastSession!!.endTime!! - lastSession!!.startTime) / 60000).toString() + " min" else "0 min"
                     StatBox("TIEMPO", duration)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    StatBox("MAX +G (Acel)", "${String.format("%.2f", maxPosG)}")
+                    StatBox("MAX -G (Freno)", "${String.format("%.2f", maxNegG)}")
+                    StatBox("TIEMPO >100", "${timeOver100} s")
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

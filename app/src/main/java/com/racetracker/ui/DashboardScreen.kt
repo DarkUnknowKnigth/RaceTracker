@@ -32,11 +32,20 @@ import com.racetracker.services.LocationTrackingService
 import kotlinx.coroutines.delay
 
 @Composable
-fun DashboardScreen(userId: Int, onLogout: () -> Unit) {
+fun DashboardScreen(userId: Int, db: com.racetracker.data.AppDatabase, onLogout: () -> Unit) {
     val context = LocalContext.current
     var isTracking by remember { mutableStateOf(false) }
     var currentSpeed by remember { mutableStateOf(0f) }
     var secondsElapsed by remember { mutableStateOf(0) }
+
+    LaunchedEffect(userId) {
+        val activeSession = db.raceDao().getActiveSessionForUser(userId)
+        if (activeSession != null) {
+            isTracking = true
+            val elapsedMs = System.currentTimeMillis() - activeSession.startTime
+            secondsElapsed = (elapsedMs / 1000).toInt()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()

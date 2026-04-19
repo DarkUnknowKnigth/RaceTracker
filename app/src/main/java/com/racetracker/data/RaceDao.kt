@@ -14,6 +14,24 @@ interface RaceDao {
     @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
     fun getUserById(userId: Int): Flow<UserEntity?>
 
+    @Update
+    suspend fun updateUser(user: UserEntity)
+
+    @Insert
+    suspend fun insertVehicle(vehicle: VehicleEntity): Long
+
+    @Update
+    suspend fun updateVehicle(vehicle: VehicleEntity)
+
+    @Delete
+    suspend fun deleteVehicle(vehicle: VehicleEntity)
+
+    @Query("SELECT * FROM vehicles WHERE userId = :userId")
+    fun getVehiclesForUser(userId: Int): Flow<List<VehicleEntity>>
+
+    @Query("SELECT * FROM vehicles WHERE id = :vehicleId LIMIT 1")
+    fun getVehicleById(vehicleId: Int): Flow<VehicleEntity?>
+
     @Insert
     suspend fun insertSession(session: SessionEntity): Long
 
@@ -22,6 +40,9 @@ interface RaceDao {
 
     @Query("SELECT * FROM sessions WHERE userId = :userId ORDER BY startTime DESC")
     fun getSessionsForUser(userId: Int): Flow<List<SessionEntity>>
+
+    @Query("SELECT * FROM sessions WHERE id = :sessionId LIMIT 1")
+    fun getSessionById(sessionId: Int): Flow<SessionEntity?>
 
     @Insert
     suspend fun insertTrackPoint(point: TrackPointEntity)
@@ -34,6 +55,9 @@ interface RaceDao {
 
     @Query("SELECT * FROM sessions WHERE userId = :userId ORDER BY startTime DESC LIMIT 1")
     fun getLastSessionForUser(userId: Int): Flow<SessionEntity?>
+
+    @Query("SELECT * FROM sessions WHERE userId = :userId AND endTime IS NULL LIMIT 1")
+    suspend fun getActiveSessionForUser(userId: Int): SessionEntity?
 
     @Query("SELECT MAX(maxSpeed) FROM sessions WHERE userId = :userId")
     fun getOverallTopSpeedForUser(userId: Int): Flow<Float?>
