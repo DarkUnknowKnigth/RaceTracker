@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "RaceTracker"
+rootProject.name = "FastTrackClub"
 include(":app")

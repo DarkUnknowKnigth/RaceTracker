@@ -1,6 +1,6 @@
-# 🏎️ RaceTracker
+# 🏎️ Fast Track Club
 
-**RaceTracker** es una aplicación de telemetría de alto rendimiento para Android, diseñada de manera nativa utilizando **Kotlin**, **Jetpack Compose**, y los impecables principios visuales de **Material Design 3 (M3)** con una temática exclusiva de carreras inspirada en *BMW M3 Competition*.
+**Fast Track Clun** es una aplicación de telemetría de alto rendimiento para Android, diseñada de manera nativa utilizando **Kotlin**, **Jetpack Compose**, y los impecables principios visuales de **Material Design 3 (M3)** con una temática exclusiva de carreras inspirada en *BMW M3 Competition*.
 
 Este proyecto es **100% Open Source (Código Abierto)**. Cualquier desarrollador, entusiasta de las carreras o estudiante está invitado a clonar, auditar y compilar esta aplicación libremente en su propio entorno.
 

@@ -5,14 +5,14 @@ plugins {
 }
 
 android {
-    namespace = "com.racetracker"
-    compileSdk = 34
+    namespace = "com.fasttrack"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.racetracker"
+        applicationId = "com.fasttrack.club"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
+        targetSdk = 35
+        versionCode = 3
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
